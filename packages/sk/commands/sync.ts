@@ -21,11 +21,13 @@ import { saveManifest } from "@/manifest/fs"
 import { getEnabledAgents, setAgent } from "@/manifest/transform"
 import type { Manifest } from "@/manifest/types"
 import { runSync } from "@/sync/sync"
+import type { SkillTargetMode } from "@/sync/types"
 
 export async function syncCommand(options: {
 	dryRun: boolean
 	global: boolean
 	nonInteractive: boolean
+	skillTarget: SkillTargetMode
 }): Promise<void> {
 	const selectionResult = options.global
 		? await resolveGlobalManifest({
@@ -54,13 +56,18 @@ export async function syncCommand(options: {
 	const result = await syncWithSelection(selectionResult.value, {
 		dryRun: options.dryRun,
 		nonInteractive: options.nonInteractive,
+		skillTarget: options.skillTarget,
 	})
 	printOutcome(result)
 }
 
 export async function syncWithSelection(
 	selection: ManifestSelection,
-	options: { dryRun: boolean; nonInteractive: boolean },
+	options: {
+		dryRun: boolean
+		nonInteractive: boolean
+		skillTarget?: SkillTargetMode
+	},
 ): Promise<CommandResult<void>> {
 	consola.info("sk sync")
 
@@ -79,6 +86,7 @@ export async function syncWithSelection(
 		agents: agentResult.value.agents,
 		dryRun: options.dryRun,
 		manifest: agentResult.value.manifest,
+		skillTarget: options.skillTarget ?? "prefixed",
 	})
 	if (!result.ok) {
 		return CommandResult.failed(result.error)
