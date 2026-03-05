@@ -1,8 +1,9 @@
 import { failSync } from "@/sync/errors"
-import type { ExtractedPackage, SyncResult } from "@/sync/types"
+import type { ExtractedPackage, SkillTargetMode, SyncResult } from "@/sync/types"
 
 export function validateExtractedPackages(
 	packages: ExtractedPackage[],
+	skillTarget: SkillTargetMode = "prefixed",
 ): SyncResult<void> {
 	const seenTargets = new Set<string>()
 
@@ -37,7 +38,8 @@ export function validateExtractedPackages(
 				})
 			}
 
-			const targetName = `${prefix}-${name}`
+			const targetName =
+				skillTarget === "name" ? name : `${prefix}-${name}`
 			if (seenTargets.has(targetName)) {
 				return failSync("validate", {
 					field: "skills",

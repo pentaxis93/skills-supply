@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { Command } from "commander"
+import { Command, InvalidOptionArgumentError } from "commander"
 import { agentAdd } from "@/commands/agent/add"
 import { agentInteractive } from "@/commands/agent/index"
 import { agentRemove } from "@/commands/agent/remove"
@@ -12,6 +12,7 @@ import { pkgInteractive } from "@/commands/pkg/index"
 import { pkgRemove } from "@/commands/pkg/remove"
 import { status } from "@/commands/status"
 import { syncCommand } from "@/commands/sync"
+import type { SkillTargetMode } from "@/sync/types"
 import { whoami } from "@/commands/whoami"
 import pkg from "./package.json" with { type: "json" }
 
@@ -36,6 +37,12 @@ async function main(): Promise<void> {
 		.command("sync")
 		.description("Sync skills across agents")
 		.option("--dry-run", "Plan changes without modifying files")
+		.option(
+			"--skill-target <target>",
+			"Skill target naming mode (prefixed|name)",
+			parseSkillTargetMode,
+			"prefixed",
+		)
 		.option("--global", "Use the global manifest")
 		.option("--non-interactive", "Run without prompts")
 		.action(
@@ -43,11 +50,13 @@ async function main(): Promise<void> {
 				dryRun?: boolean
 				global?: boolean
 				nonInteractive?: boolean
+				skillTarget?: SkillTargetMode
 			}) => {
 				await syncCommand({
 					dryRun: Boolean(options.dryRun),
 					global: Boolean(options.global),
 					nonInteractive: Boolean(options.nonInteractive),
+					skillTarget: options.skillTarget ?? "prefixed",
 				})
 			},
 		)
@@ -218,3 +227,12 @@ async function main(): Promise<void> {
 }
 
 void main()
+
+function parseSkillTargetMode(value: string): SkillTargetMode {
+	if (value === "prefixed" || value === "name") {
+		return value
+	}
+	throw new InvalidOptionArgumentError(
+		`Invalid skill target mode "${value}". Expected "prefixed" or "name".`,
+	)
+}

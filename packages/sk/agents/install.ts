@@ -10,6 +10,7 @@ import type {
 } from "@/agents/types"
 
 type InstallMode = "copy" | "symlink"
+export type SkillTargetMode = "prefixed" | "name"
 
 export interface InstallTask {
 	agentId: ResolvedAgent["id"]
@@ -92,6 +93,7 @@ export async function applyAgentInstall(
 export function planAgentInstall(
 	agent: ResolvedAgent,
 	packages: InstallablePackage[],
+	skillTarget: SkillTargetMode = "prefixed",
 ): PlanResult {
 	// Validate raw input before resolving - empty/whitespace paths are invalid
 	if (!agent.skillsPath.trim()) {
@@ -129,9 +131,18 @@ export function planAgentInstall(
 			}
 		}
 
-		const prefixResult = normalizeSegment(pkg.prefix, "prefix", agent.id)
-		if (!prefixResult.ok) {
-			return prefixResult
+		const prefixValue =
+			skillTarget === "prefixed"
+				? (() => {
+						const prefixResult = normalizeSegment(pkg.prefix, "prefix", agent.id)
+						if (!prefixResult.ok) {
+							return prefixResult
+						}
+						return { ok: true as const, value: prefixResult.value }
+					})()
+				: { ok: true as const, value: "" }
+		if (!prefixValue.ok) {
+			return prefixValue
 		}
 
 		const mode: InstallMode = pkg.canonical.type === "local" ? "symlink" : "copy"
@@ -142,7 +153,10 @@ export function planAgentInstall(
 				return skillResult
 			}
 
-			const targetName = `${prefixResult.value}-${skillResult.value}`
+			const targetName =
+				skillTarget === "name"
+					? skillResult.value
+					: `${prefixValue.value}-${skillResult.value}`
 			const targetPath = path.join(baseNormalized, targetName) as AbsolutePath
 			if (!isWithinBase(baseNormalized, targetPath)) {
 				const message = "Skill target path escapes the agent skills directory."

@@ -168,6 +168,33 @@ describe("planAgentInstall", () => {
 		})
 	})
 
+	it("uses skill name only in name target mode", async () => {
+		await withTempDir(async (dir) => {
+			const skillSource = await createSkillSource(dir, "my-skill", {
+				"index.md": "# My Skill",
+			})
+
+			const agent = makeAgent(join(dir, "agent-skills"))
+			const packages = [
+				makeInstallablePackage(makeLocalPackage(dir), "my-pkg", [
+					makeSkill("my-skill", skillSource),
+				]),
+			]
+
+			const result = planAgentInstall(agent, packages, "name")
+
+			expect(result).toBeOk()
+			if (result.ok) {
+				expect(result.value.tasks).toHaveLength(1)
+				const [task] = result.value.tasks
+				if (!task) {
+					throw new Error("Expected one install task")
+				}
+				expect(task.targetName).toBe("my-skill")
+			}
+		})
+	})
+
 	it("rejects packages with no skills", async () => {
 		await withTempDir(async (dir) => {
 			const agent = makeAgent(join(dir, "agent-skills"))
@@ -318,6 +345,30 @@ describe("planAgentInstall", () => {
 				expect(names).toContain("pkg-a-skill1")
 				expect(names).toContain("pkg-a-skill2")
 				expect(names).toContain("pkg-b-skill3")
+			}
+		})
+	})
+
+	it("rejects duplicate skill names across packages in name target mode", async () => {
+		await withTempDir(async (dir) => {
+			const skill = await createSkillSource(dir, "shared-skill", { "a.md": "A" })
+
+			const agent = makeAgent(join(dir, "agent-skills"))
+			const packages = [
+				makeInstallablePackage(makeLocalPackage(dir), "pkg-a", [
+					makeSkill("shared-skill", skill),
+				]),
+				makeInstallablePackage(makeLocalPackage(dir), "pkg-b", [
+					makeSkill("shared-skill", skill),
+				]),
+			]
+
+			const result = planAgentInstall(agent, packages, "name")
+
+			expect(result).toBeErr()
+			if (!result.ok) {
+				expect(result.error.type).toBe("conflict")
+				expect(result.error.message).toContain("Duplicate target")
 			}
 		})
 	})

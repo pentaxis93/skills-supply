@@ -4,6 +4,8 @@ import type { Manifest } from "@/manifest/types"
 import type { CanonicalPackage, Skill } from "@/packages/types"
 import type { SkError } from "@/types/errors"
 
+export type SkillTargetMode = "prefixed" | "name"
+
 export type SyncStage =
 	| "discover"
 	| "parse"
@@ -42,4 +44,5 @@ export interface SyncOptions {
 	dryRun: boolean
 	agents: ResolvedAgent[]
 	manifest: Manifest
+	skillTarget?: SkillTargetMode
 }

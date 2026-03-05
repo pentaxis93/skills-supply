@@ -37,7 +37,13 @@ import type {
 import { failSync } from "@/sync/errors"
 import { type ResolvedClaudePlugin, resolveAgentPackages } from "@/sync/marketplace"
 import { buildRepoDir, buildRepoKey } from "@/sync/repo"
-import type { ExtractedPackage, SyncOptions, SyncResult, SyncSummary } from "@/sync/types"
+import type {
+	ExtractedPackage,
+	SkillTargetMode,
+	SyncOptions,
+	SyncResult,
+	SyncSummary,
+} from "@/sync/types"
 import { validateExtractedPackages } from "@/sync/validate"
 import type { PackageOrigin } from "@/types/context"
 import type { SkError } from "@/types/errors"
@@ -79,6 +85,7 @@ interface NormalizedPackage {
 
 export async function runSync(options: SyncOptions): Promise<SyncResult<SyncSummary>> {
 	const { agents, manifest } = options
+	const skillTarget = options.skillTarget ?? "prefixed"
 	if (agents.length === 0) {
 		return failSync("agents", {
 			field: "agents",
@@ -98,7 +105,7 @@ export async function runSync(options: SyncOptions): Promise<SyncResult<SyncSumm
 	let removed = 0
 
 	for (const agent of agents) {
-		const agentResult = await syncAgent(agent, packages, options)
+		const agentResult = await syncAgent(agent, packages, options, skillTarget)
 		if (!agentResult.ok) {
 			return agentResult
 		}
@@ -183,6 +190,7 @@ async function syncAgent(
 	agent: ResolvedAgent,
 	packages: CanonicalPackage[],
 	options: SyncOptions,
+	skillTarget: SkillTargetMode,
 ): Promise<SyncResult<AgentSyncSummary>> {
 	const tempRootResult = await createTempRoot(agent.id)
 	if (!tempRootResult.ok) {
@@ -238,7 +246,7 @@ async function syncAgent(
 		warnings = warnings.concat(extractedResult.value.warnings)
 		const extractedPackages = extractedResult.value.packages
 
-		const validation = validateExtractedPackages(extractedPackages)
+		const validation = validateExtractedPackages(extractedPackages, skillTarget)
 		if (!validation.ok) {
 			result = validation
 			return result
@@ -250,7 +258,7 @@ async function syncAgent(
 			skills: pkg.skills,
 		}))
 
-		const planResult = planAgentInstall(agent, installable)
+		const planResult = planAgentInstall(agent, installable, skillTarget)
 		if (!planResult.ok) {
 			result = failSync("install", planResult.error)
 			return result

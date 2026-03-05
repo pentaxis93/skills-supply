@@ -176,6 +176,7 @@ describe("syncWithSelection", () => {
 				manifest: expect.objectContaining({
 					agents: new Map([["claude-code", true]]),
 				}),
+				skillTarget: "prefixed",
 			})
 		})
 
@@ -207,6 +208,39 @@ describe("syncWithSelection", () => {
 			expect(runSyncMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					dryRun: true,
+					skillTarget: "prefixed",
+				}),
+			)
+		})
+
+		it("passes through skillTarget override", async () => {
+			let manifest = createEmptyManifest(manifestPath, "cwd")
+			manifest = setAgent(manifest, "claude-code" as AgentId, true)
+			const selection = buildSelection(manifest)
+
+			runSyncMock.mockResolvedValueOnce({
+				ok: true,
+				value: {
+					agents: ["claude-code"],
+					dependencies: 0,
+					dryRun: false,
+					installed: 0,
+					manifests: 1,
+					noOpReason: "no-dependencies",
+					removed: 0,
+					warnings: [],
+				},
+			})
+
+			await syncWithSelection(selection, {
+				dryRun: false,
+				nonInteractive: true,
+				skillTarget: "name",
+			})
+
+			expect(runSyncMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					skillTarget: "name",
 				}),
 			)
 		})

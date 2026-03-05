@@ -175,6 +175,60 @@ describe("sync e2e", () => {
 			})
 		})
 
+		it("installs skill-name targets when skillTarget=name", async () => {
+			await withTempDir(async (dir) => {
+				tempDir = dir
+
+				const pkgDir = join(dir, "my-skills-pkg")
+				await setupFixturePackage(pkgDir, {
+					name: "my-skills",
+					skills: [
+						{
+							content: "# Greeting\n\nA friendly greeting skill.",
+							name: "greeting",
+						},
+						{
+							content: "# Farewell\n\nA polite farewell skill.",
+							name: "farewell",
+						},
+					],
+				})
+
+				const projectDir = join(dir, "project")
+				await createTestProject(projectDir, {
+					agents: ["claude-code"],
+					dependencies: {
+						"my-skills": `local:${pkgDir}`,
+					},
+					name: "test-project",
+				})
+
+				const { rootPath: agentRootDir, skillsPath: agentSkillsDir } =
+					buildAgentPaths(dir)
+				const agent = createResolvedAgent(agentRootDir, agentSkillsDir)
+				const manifest = await loadProjectManifest(projectDir)
+
+				const result = await runSync({
+					agents: [agent],
+					dryRun: false,
+					manifest,
+					skillTarget: "name",
+				})
+
+				expect(result.ok).toBe(true)
+				if (!result.ok) {
+					return
+				}
+
+				const installedSkills = await listInstalledSkills(agentSkillsDir)
+				expect(installedSkills).toContain("greeting")
+				expect(installedSkills).toContain("farewell")
+				for (const skill of installedSkills) {
+					expect(skill).not.toMatch(/^my-skills-/)
+				}
+			})
+		})
+
 		it("handles a package with no skills gracefully", async () => {
 			await withTempDir(async (dir) => {
 				tempDir = dir
