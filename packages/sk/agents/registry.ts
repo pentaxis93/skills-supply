@@ -68,7 +68,7 @@ const AGENT_ENTRIES: AgentEntry[] = [
 		displayName: "Codex",
 		globalBasePath: ".codex",
 		id: "codex",
-		localBasePath: ".codex",
+		localBasePath: ".agents",
 		skillsDir: "skills",
 	},
 	{

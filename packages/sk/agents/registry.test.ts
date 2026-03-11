@@ -47,7 +47,7 @@ describe("resolveAgent", () => {
 			expect(resolved.skillsPath).toBe("/projects/my-app/.claude/skills")
 		})
 
-		it("resolves Codex to .codex/skills/ for local scope", () => {
+		it("resolves Codex to .agents/skills/ for local scope", () => {
 			const agent = getAgentById("codex")
 			expect(agent.ok).toBe(true)
 			if (!agent.ok) return
@@ -55,8 +55,8 @@ describe("resolveAgent", () => {
 			const resolved = resolveAgent(agent.value, localScope)
 
 			expect(resolved.id).toBe("codex")
-			expect(resolved.rootPath).toBe("/projects/my-app/.codex")
-			expect(resolved.skillsPath).toBe("/projects/my-app/.codex/skills")
+			expect(resolved.rootPath).toBe("/projects/my-app/.agents")
+			expect(resolved.skillsPath).toBe("/projects/my-app/.agents/skills")
 		})
 
 		it("resolves Factory to .factory/skills/ for local scope", () => {
@@ -202,6 +202,30 @@ describe("resolveAgent", () => {
 
 			// Global: .config/opencode (XDG-style in home)
 			expect(global.rootPath).toBe("/home/user/.config/opencode")
+		})
+
+		it("Codex uses different base paths for local vs global", () => {
+			const agent = getAgentById("codex")
+			expect(agent.ok).toBe(true)
+			if (!agent.ok) return
+
+			const local = resolveAgent(agent.value, {
+				projectRoot: "/project" as AbsolutePath,
+				type: "local",
+			})
+			const global = resolveAgent(agent.value, {
+				homeDir: "/home/user" as AbsolutePath,
+				type: "global",
+			})
+
+			// Local: .agents (Codex repo-native skill discovery path)
+			expect(local.rootPath).toBe("/project/.agents")
+
+			// Global: .codex (user-level config)
+			expect(global.rootPath).toBe("/home/user/.codex")
+
+			// These are deliberately different!
+			expect(path.basename(local.rootPath)).not.toBe(path.basename(global.rootPath))
 		})
 
 		it("Claude Code uses same base path for both scopes", () => {
